@@ -89,6 +89,6 @@ function generate() {
 generate "enabled_mods >= 0" "DESC" > pp_gains_all.csv &
 generate "enabled_mods >= 0" "ASC" > pp_losses_all.csv &
 generate "enabled_mods = 0" "DESC" > pp_gains_nm.csv &
-generate "enabled_mods = 0" "ASC" > pp_losses_sr.csv &
+generate "enabled_mods = 0" "ASC" > pp_losses_nm.csv &
 
 wait
