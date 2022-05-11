@@ -67,12 +67,12 @@ function generate() {
             ON b.beatmap_id = tbl.beatmap_id
         WHERE tbl.${mod_comparator}
         AND (
-            tbl.a_pp IS NOT NULL
-            OR tbl.b_pp IS NOT NULL
-        )
-        AND (
-            tbl.a_pp IS NULL
-            OR tbl.b_pp IS NULL
+            # For the time being, we also care about PP going from non-null -> null.
+            # Caring about null -> not-null will be too verbose when new attributes are added.
+            (
+                tbl.a_pp IS NOT NULL
+                AND tbl.b_pp IS NULL
+            )
             OR abs(tbl.a_pp - tbl.b_pp) > 0.1
         )
         ORDER BY

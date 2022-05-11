@@ -71,12 +71,12 @@ function generate() {
         WHERE tbl.mode = ${MODE_NUMERIC}
         AND tbl.${mod_comparator}
         AND (
-            tbl.a_diff_unified IS NOT NULL
-            OR tbl.b_diff_unified IS NOT NULL
-        )
-        AND (
-            tbl.a_diff_unified IS NULL
-            OR tbl.b_diff_unified IS NULL
+            # For the time being, we also care about SR going from non-null -> null.
+            # Caring about null -> not-null will be too verbose when new attributes are added.
+            (
+                tbl.a_diff_unified IS NOT NULL
+                AND tbl.b_diff_unified IS NULL
+            )
             OR abs(tbl.a_diff_unified - tbl.b_diff_unified) > 0.1
         )
         ORDER BY
