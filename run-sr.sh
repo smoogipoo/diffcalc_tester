@@ -25,114 +25,70 @@ case "$MODE" in
         ;;
 esac
 
-# Get combined SR gains
-mysql -uroot --execute="
-    SELECT
-        p.beatmap_id,
-        p.mods,
-        b.filename,
-        m.diff_unified as 'sr_master',
-        p.diff_unified as 'sr_pr',
-        (p.diff_unified - m.diff_unified) as 'diff',
-        (p.diff_unified / m.diff_unified - 1) as 'diff%'
-    FROM osu.osu_beatmap_difficulty m
-    RIGHT JOIN osu_pr.osu_beatmap_difficulty p
-        ON m.beatmap_id = p.beatmap_id
-        AND m.mode = p.mode
-        AND m.mods = p.mods
-    JOIN osu_pr.osu_beatmaps b
-        ON b.beatmap_id = p.beatmap_id
-    WHERE m.beatmap_id is null
-    OR (
-        m.mode = ${MODE_NUMERIC}
-        AND abs(m.diff_unified - p.diff_unified) > 0.1
-    )
-    ORDER BY p.diff_unified - m.diff_unified
-        DESC
-    LIMIT 10000;" \
-> sr_gains_all.csv &
+function generate() {
+    mod_comparator=$1
+    sort_mode=$2
 
-# Get combined SR losses
-mysql -uroot --execute="
-    SELECT
-        p.beatmap_id,
-        p.mods,
-        b.filename,
-        m.diff_unified as 'sr_master',
-        p.diff_unified as 'sr_pr',
-        (p.diff_unified - m.diff_unified) as 'diff',
-        (p.diff_unified / m.diff_unified - 1) as 'diff%'
-    FROM osu.osu_beatmap_difficulty m
-    RIGHT JOIN osu_pr.osu_beatmap_difficulty p
-        ON m.beatmap_id = p.beatmap_id
-        AND m.mode = p.mode
-        AND m.mods = p.mods
-    JOIN osu_pr.osu_beatmaps b
-        ON b.beatmap_id = p.beatmap_id
-    WHERE m.beatmap_id is null
-    OR (
-        m.mode = ${MODE_NUMERIC}
-        AND abs(m.diff_unified - p.diff_unified) > 0.1
-    )
-    ORDER BY p.diff_unified - m.diff_unified
-        ASC
-    LIMIT 10000;" \
-> sr_losses_all.csv &
+    mysql -uroot --execute="
+        SELECT
+            b.beatmap_id,
+            tbl.mods,
+            b.filename,
+            tbl.a_diff_unified as 'sr_master',
+            tbl.b_diff_unified as 'sr_pr',
+            (tbl.b_diff_unified - tbl.a_diff_unified) as 'diff',
+            (tbl.b_diff_unified / tbl.a_diff_unified - 1) as 'diff%'
+        FROM (
+            SELECT
+                a.beatmap_id,
+                a.mods,
+                a.mode,
+                a.diff_unified AS 'a_diff_unified',
+                b.diff_unified AS 'b_diff_unified'
+            FROM osu.osu_beatmap_difficulty a
+            LEFT JOIN osu_pr.osu_beatmap_difficulty b
+                ON a.beatmap_id = b.beatmap_id
+                AND a.mode = b.mode
+                AND a.mods = b.mods
+            # Simulate a full-outer join
+            UNION ALL
+                SELECT
+                    b.beatmap_id,
+                    b.mods,
+                    b.mode,
+                    a.diff_unified AS 'a_diff_unified',
+                    b.diff_unified AS 'b_diff_unified'
+                FROM osu.osu_beatmap_difficulty a
+                RIGHT JOIN osu_pr.osu_beatmap_difficulty b
+                    ON a.beatmap_id = b.beatmap_id
+                    AND a.mode = b.mode
+                    AND a.mods = b.mods
+                WHERE a.beatmap_id IS NULL # Anti-join
+        )
+        AS tbl
+        JOIN osu_pr.osu_beatmaps b
+            ON b.beatmap_id = tbl.beatmap_id
+        WHERE tbl.mode = ${MODE_NUMERIC}
+        AND tbl.${mod_comparator}
+        AND (
+            tbl.a_diff_unified IS NULL
+            OR tbl.b_diff_unified IS NULL
+            OR abs(tbl.a_diff_unified - tbl.b_diff_unified) > 0.1
+        )
+        ORDER BY
+            # Nulls at the top of the list (most importance)
+            (
+                tbl.a_diff_unified IS NULL
+                OR tbl.b_diff_unified IS NULL
+            ) DESC,
+            # Then order by diff
+            tbl.b_diff_unified - tbl.a_diff_unified ${sort_mode}
+        LIMIT 10000;"
+}
 
-# Get NoMod SR gains
-mysql -uroot --execute="
-    SELECT
-        p.beatmap_id,
-        p.mods,
-        b.filename,
-        m.diff_unified as 'sr_master',
-        p.diff_unified as 'sr_pr',
-        (p.diff_unified - m.diff_unified) as 'diff',
-        (p.diff_unified / m.diff_unified - 1) as 'diff%'
-    FROM osu.osu_beatmap_difficulty m
-    RIGHT JOIN osu_pr.osu_beatmap_difficulty p
-        ON m.beatmap_id = p.beatmap_id
-        AND m.mode = p.mode
-        AND m.mods = p.mods
-    JOIN osu_pr.osu_beatmaps b
-        ON b.beatmap_id = p.beatmap_id
-    WHERE m.beatmap_id is null
-    OR (
-        m.mods = 0
-        AND m.mode = ${MODE_NUMERIC}
-        AND abs(m.diff_unified - p.diff_unified) > 0.1
-    )
-    ORDER BY p.diff_unified - m.diff_unified
-        DESC
-    LIMIT 10000;" \
-> sr_gains_nm.csv &
-
-# Get NoMod SR losses
-mysql -uroot --execute="
-    SELECT
-        p.beatmap_id,
-        p.mods,
-        b.filename,
-        m.diff_unified as 'sr_master',
-        p.diff_unified as 'sr_pr',
-        (p.diff_unified - m.diff_unified) as 'diff',
-        (p.diff_unified / m.diff_unified - 1) as 'diff%'
-    FROM osu.osu_beatmap_difficulty m
-    RIGHT JOIN osu_pr.osu_beatmap_difficulty p
-        ON m.beatmap_id = p.beatmap_id
-        AND m.mode = p.mode
-        AND m.mods = p.mods
-    JOIN osu_pr.osu_beatmaps b
-        ON b.beatmap_id = p.beatmap_id
-    WHERE m.beatmap_id is null
-    OR (
-        m.mods = 0
-        AND m.mode = ${MODE_NUMERIC}
-        AND abs(m.diff_unified - p.diff_unified) > 0.1
-    )
-    ORDER BY p.diff_unified - m.diff_unified
-        ASC
-    LIMIT 10000;" \
-> sr_losses_nm.csv &
+generate "mods >= 0" "DESC" > sr_gains_all.csv &
+generate "mods >= 0" "ASC" > sr_losses_all.csv &
+generate "mods = 0" "DESC" > sr_gains_nm.csv &
+generate "mods = 0" "ASC" > sr_losses_nm.csv &
 
 wait
