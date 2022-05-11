@@ -71,6 +71,10 @@ function generate() {
         WHERE tbl.mode = ${MODE_NUMERIC}
         AND tbl.${mod_comparator}
         AND (
+            tbl.a_diff_unified IS NOT NULL
+            OR tbl.b_diff_unified IS NOT NULL
+        )
+        AND (
             tbl.a_diff_unified IS NULL
             OR tbl.b_diff_unified IS NULL
             OR abs(tbl.a_diff_unified - tbl.b_diff_unified) > 0.1
