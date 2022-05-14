@@ -5,11 +5,6 @@ source ./common.sh
 function generate() {
     mod_comparator=$1
     sort_mode=$2
-    beatmap_playmode_comparator=""
-
-    if [[ "$NO_CONVERTS" == 1 ]]; then
-        beatmap_playmode_comparator="AND b.playmode = $MODE_NUMERIC"
-    fi
 
     mysql -uroot --execute="
         SELECT
@@ -48,7 +43,7 @@ function generate() {
         JOIN osu_pr.osu_beatmaps b
             ON b.beatmap_id = tbl.beatmap_id
         WHERE tbl.${mod_comparator}
-        ${beatmap_playmode_comparator}
+        ${BEATMAP_COMPARATOR}
         AND (
             # For the time being, we also care about PP going from non-null -> null.
             # Caring about null -> not-null will be too verbose when new attributes are added.

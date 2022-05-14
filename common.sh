@@ -2,9 +2,11 @@
 
 MODE_LITERAL=$1
 
-NO_CONVERTS=0
+RANKED_ONLY=0
 MODE_NUMERIC=0
 HIGH_SCORES_SUFFIX=""
+
+BEATMAP_COMPARATOR=""
 
 case "$MODE_LITERAL" in
     "osu")
@@ -28,12 +30,14 @@ case "$MODE_LITERAL" in
         ;;
 esac
 
-while :; do
+while (( $# )); do
     case $1 in
-        --no-converts)
-            NO_CONVERTS=1
+        -nc|--no-converts)
+            BEATMAP_COMPARATOR+="AND b.playmode = $MODE_NUMERIC "
             ;;
-        *) break
+        -ro|--ranked-only)
+            BEATMAP_COMPARATOR+="AND b.approved IN (1, 2) "
+            ;;
     esac
     shift
 done
