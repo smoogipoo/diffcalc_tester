@@ -1,33 +1,15 @@
 #!/bin/bash
 
-MODE=$1
-HIGH_SCORES_SUFFIX=""
-
-case "$MODE" in
-    "osu")
-        MODE_NUMERIC=0
-        ;;
-    "taiko")
-        MODE_NUMERIC=1
-        HIGH_SCORES_SUFFIX="_taiko"
-        ;;
-    "catch")
-        MODE_NUMERIC=2
-        HIGH_SCORES_SUFFIX="_fruits"
-        ;;
-    "mania")
-        MODE_NUMERIC=3
-        HIGH_SCORES_SUFFIX="_mania"
-        ;;
-    *)
-        echo "Ruleset identifier not provided"
-        exit 1;
-        ;;
-esac
+source ./common.sh
 
 function generate() {
     mod_comparator=$1
     sort_mode=$2
+    beatmap_playmode_comparator=""
+
+    if [[ "$NO_CONVERTS" == 1 ]]; then
+        beatmap_playmode_comparator="AND b.playmode = $MODE_NUMERIC"
+    fi
 
     mysql -uroot --execute="
         SELECT
@@ -70,6 +52,7 @@ function generate() {
             ON b.beatmap_id = tbl.beatmap_id
         WHERE tbl.mode = ${MODE_NUMERIC}
         AND tbl.${mod_comparator}
+        ${beatmap_playmode_comparator}
         AND (
             # For the time being, we also care about SR going from non-null -> null.
             # Caring about null -> not-null will be too verbose when new attributes are added.

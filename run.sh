@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./run-sr.sh $1 &
-./run-pp.sh $1 &
+./run-sr.sh "$@" &
+./run-pp.sh "$@" &
 
 wait
