@@ -6,6 +6,12 @@ function generate() {
     mod_comparator=$1
     sort_mode=$2
 
+    existing_pp_query=""
+
+    if [[ $ONLY_EXISTING_PP == 1 ]]; then
+        existing_pp_query="AND tbl.a_pp != 0"
+    fi
+
     mysql -uroot --execute="
         SELECT
             tbl.score_id,
@@ -53,6 +59,7 @@ function generate() {
             )
             OR abs(tbl.a_pp - tbl.b_pp) > 0.1
         )
+        ${existing_pp_query}
         ORDER BY
             # Nulls at the top of the list (most importance)
             (
